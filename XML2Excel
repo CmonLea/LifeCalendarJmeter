@@ -1,4 +1,4 @@
-package com.testlink;
+package dom4j;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -22,9 +22,10 @@ public class XML2Excel {
 	 */
 	// private static String testCasePath = "";
 	SAXReader sax = new SAXReader();// 创建一个SAXReader对象
-	File xmlFile = new File("用例模板.xml");
+	File xmlFile = new File("始发地航空站点0425.xml");
 	static Element parentNode = null;
-	static int testsuiteDeep=1;
+	static int testsuiteDeep = 1;
+	static String testcasePath1 = "";
 
 	@Test
 
@@ -86,28 +87,47 @@ public class XML2Excel {
 			// 非根节点且包含测试用例
 
 			System.out.println("===================节点名称为:" + node.attributeValue("name") + "节点路径为:" + node.getPath());
-			String nodePath= node.getPath();
-			
+			String nodePath = node.getPath();
+
 			testCasePath = node.getPath();
 			System.out.println("父节点的名称为:" + node.getParent().attributeValue("name"));
 
-			if(node.getParent().attributeValue("name")=="") {
-				System.out.println(node.attributeValue("name")+"不存在多层路径");
-			}else {
+			if (node.getParent().attributeValue("name") == "") {
+				System.out.println(node.attributeValue("name") + "不存在多层路径");
+			} else {
 				getTestCasePath(nodePath);
-				List<String> testSuitePathList=new ArrayList<>();
-				parentNode=node.getParent();
-				while(parentNode.attributeValue("name")!="") {
-					parentNode=parentNode.getParent();
-					System.out.println("+++++++++++++"+parentNode.attributeValue("name"));
-					String testSuiteName=parentNode.attributeValue("name");
-					testSuitePathList.add(testSuiteName);
-					testsuiteDeep++;
+				List<String> testSuitePathList = new ArrayList<String>();
+				// 当前节点的名称
+				String currentSuiteName = node.attributeValue("name");
+				System.out
+						.println("--------------------------------当前节点的名称为:-----------------------" + currentSuiteName);
+				parentNode = node.getParent();
+				String currentParentSuiteName = parentNode.attributeValue("name");
+				System.out.println(
+						"-------------------------------当前节点的父节点名称为:----------------------" + currentParentSuiteName);
+
+				while (parentNode.attributeValue("name") != "") {
+					// String testSuiteName = parentNode.attributeValue("name");
+					// System.out.println("00000000000000000000000000000000000000000000"+testSuiteName);
+					parentNode = parentNode.getParent();
+					// System.out.println("+++++++++++++" + parentNode.attributeValue("name"));
+					String testSuiteName = parentNode.attributeValue("name");
+					if (testSuiteName != "") {
+
+						System.out.println("-------------------------------------------------------" + testSuiteName);
+					}
+
 				}
-				//System.out.println("...................."+node.getParent().attribute(1).getName());
-		for(String suiteName:testSuitePathList) {
-			System.out.println("*********用例路径***********"+suiteName);
-		}
+				// System.out.println("用例的层级为:" + testsuiteDeep + "层");
+				// for (String suiteName : testSuitePathList) {
+				// System.out.println("*********用例路径***********" + suiteName);
+				// }
+				//
+				// for (int i = 0; i < testSuitePathList.size(); i++) {
+				// testcasePath1 +=testSuitePathList.get(i);
+				//
+				// }
+				// System.out.println("用例路径为:"+testcasePath1);
 			}
 		}
 
@@ -116,11 +136,6 @@ public class XML2Excel {
 			testCasePath = node.getParent().attributeValue("name");
 			Element nodeParent = node.getParent();
 
-			// if (nodeParent != null) {
-			// testCasePath = nodeParent.attributeValue("name");
-			//
-			// }
-			// System.out.println(" 用例路径为:" + testCasePath);
 			testCasePath = node.getPath();
 
 			System.out.println("**************************" + node.attributeValue("name") + "用例路径为:" + testCasePath);
@@ -150,10 +165,10 @@ public class XML2Excel {
 		String[] a = testCasePath.split("/");
 
 		if (a.length != 0) {
-            //0表示空、1表示根节点
+			// 0表示空、1表示根节点
 			for (int i = 0; i < a.length; i++) {
-				if (i != 0&&i!=1) {
-					
+				if (i != 0 && i != 1) {
+
 					System.out.println(a[i]);
 				}
 			}
