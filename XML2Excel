@@ -2,6 +2,7 @@ package dom4j;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -113,21 +114,19 @@ public class XML2Excel {
 					// System.out.println("+++++++++++++" + parentNode.attributeValue("name"));
 					String testSuiteName = parentNode.attributeValue("name");
 					if (testSuiteName != "") {
-
+						testSuitePathList.add(testSuiteName);
 						System.out.println("-------------------------------------------------------" + testSuiteName);
 					}
 
 				}
-				// System.out.println("用例的层级为:" + testsuiteDeep + "层");
-				// for (String suiteName : testSuitePathList) {
-				// System.out.println("*********用例路径***********" + suiteName);
-				// }
-				//
-				// for (int i = 0; i < testSuitePathList.size(); i++) {
-				// testcasePath1 +=testSuitePathList.get(i);
-				//
-				// }
-				// System.out.println("用例路径为:"+testcasePath1);
+				StringBuffer stringBuffer = new StringBuffer();
+				Collections.reverse(testSuitePathList);
+				for (String suiteName : testSuitePathList) {
+					stringBuffer.append(suiteName + "/");
+				}
+
+				// System.out.println("用例的完整路径为:"+currentSuiteName+"//"+currentParentSuiteName+stringBuffer);
+				System.out.println("用例完整路径为:" + stringBuffer + currentParentSuiteName + "/" + currentSuiteName);
 			}
 		}
 
