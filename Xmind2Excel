@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.poi.ss.usermodel.Cell;
@@ -27,16 +28,19 @@ public class Xmind2Excel {
 	 */
 	// private static String testCasePath = "";
 	SAXReader sax = new SAXReader();// 创建一个SAXReader对象
-	File xmlFile = new File("始发地航空站0228用例.xml");
+	File xmlFile = new File("content.xml");
 	static Element parentNode = null;
 	static int testcaseRowNum = 1;
 	// static String testcasePath1 = "";
+	static String currentParentSuiteName = null;// 当前测试组件的名称
 
-	static String excelFilePath = "testcase.xlsx";
+	static String excelFilePath = "xmind2testcase.xlsx";
 	static Workbook workbook = ExcelUtil.readExcel(excelFilePath);// 读取Excel文件
 	static Sheet caseSheet = workbook.getSheetAt(0);// 获取解析用例的表格
 	private OutputStream stream;
-	static Row testcaseRow = null;
+	static Row testcaseRow = caseSheet.createRow(testcaseRowNum);
+	static String testcaseName = null;// 用例名称
+	static String importance = "";// 用例优先级
 
 	public static void main(String[] args) throws FileNotFoundException, DocumentException {
 		xmind2Excel();
@@ -50,20 +54,18 @@ public class Xmind2Excel {
 		 * @author MavenLea
 		 */
 		// private static String testCasePath = "";
-		String excelFilePath = "testcase.xlsx";
-		Workbook workbook = ExcelUtil.readExcel(excelFilePath);// 读取Excel文件
-		Sheet caseSheet = workbook.getSheetAt(0);// 获取解析用例的表格
+		String excelFilePath = "xmind2testcase.xlsx";
+		// Workbook workbook = ExcelUtil.readExcel(excelFilePath);// 读取Excel文件
+		// Sheet caseSheet = workbook.getSheetAt(0);// 获取解析用例的表格
 		OutputStream stream;
-		Row testcaseRow = null;
+		// Row testcaseRow = null;
 
 		SAXReader sax = new SAXReader();// 创建一个SAXReader对象
 		File xmlFile = new File("content.xml");
-		// static Element parentNode = null;
-		// static int testcaseRowNum = 1;
-		// static String testcasePath1 = "";
+
 		Document document = sax.read(xmlFile);// 获取document对象,如果文档无节点，则会抛出Exception提前结束
 		Element root = document.getRootElement();// 获取根节点
-	    System.out.println("--------------------根节点名称为:"+root.getName());
+		System.out.println("--------------------根节点名称为:" + root.getName());
 		getNodes(root);// 从根节点开始遍历所有节点
 
 		try {
@@ -78,48 +80,251 @@ public class Xmind2Excel {
 
 	}
 
-	public static void testsuiteJuge(Element node) {
-		String nodeName=node.getName();
-		List<Element> testsuiteTopic = new ArrayList<>();
+	/**
+	 * 递归查找children节点下的子节点
+	 * 
+	 * @param e
+	 */
+	public static void findChild(Element e) {
+		Element children = e.element("children");
+		Element childrenTp = children.element("topics");
 
-		if (nodeName.equals("topic")) {
-			Element title = node.element("title");// 获取主题名称
-			System.out.println("==================主题名称为:" + title.getStringValue());
-			Element marker = node.element("marker-refs");// 获取主题图标
-			Element children=node.element("children");
-			
-			if (marker != null) {
-
-				Element markerRef = marker.element("marker-ref");
-				String markerIcon = markerRef.attributeValue("marker-id");
-				System.out.println("==================主题引用的图标为:" + markerRef.attributeValue("marker-id"));
-				// 如果是旗帜图标则说明该主题是测试组件
-				if (markerIcon.startsWith("flag")&&children!=null) {
-					testsuiteTopic.add(title);
-					// 如果节点有分支
-//					if (testsuiteTopic != null) {
-//
-//						for (Element e : testsuiteTopic) {
-//					//if(e.isRootElement())
-//							testsuiteJuge(e);
-//							
-//						}
-//					}
-				}
-
-			}
+		List<Element> excepts = childrenTp.elements("topic");
+		for (Element exceptEl : excepts) {
+			String except = exceptEl.attributeValue("title");// 用例期望
 		}
-		StringBuffer stringBuffer = new StringBuffer();
-
-	//获取测试组件路径
-		for(Element testsuite:testsuiteTopic) {
-			String testsuitePath=testsuite.getStringValue();
-			stringBuffer.append(testsuitePath+"/");
-			
-		}
-		System.out.println("测试用例路径:"+stringBuffer);
 	}
 
+	public static void testsuiteJuge(Element node) {
+		String nodeName = node.getName();
+
+		List<String> testsuiteTopic = new ArrayList<>();
+	//	 testcaseRow = caseSheet.createRow(testcaseRowNum);// 创建行
+             
+
+//		Cell testcasePathCell = testcaseRow.createCell(0);// 用例路径
+//		Cell testcaseNameCell = testcaseRow.createCell(1);// 用例名称
+
+		//Cell testcaseSummaryCell = testcaseRow.createCell(2);// 用例名称
+//		Cell testcaseimportanceCell = testcaseRow.createCell(3);
+//		Cell testcasePreconditionsCell = testcaseRow.createCell(4);
+
+//		Cell testcaseActionsCell = testcaseRow.createCell(5);
+
+//		Cell testcaseExpectedresultsCell = testcaseRow.createCell(6);
+		// 分支主题
+		if (nodeName.equals("topics") && node.attributeValue("type").equals("attached")) {
+
+			List<Element> topicList = node.elements("topic");// 获取分支节点
+
+			for (Element e : topicList) {
+
+				if (e.getName().equals("topic")) {
+					// 获取主题图标
+					Element marker = e.element("marker-refs");
+					if (marker != null) {
+						Element markerRef = marker.element("marker-ref");
+						String markerIcon = markerRef.attributeValue("marker-id");
+						System.out.println("==================主题引用的图标为:" + markerIcon);
+
+						// 测试用例,获取测试用例的名称
+						String topicName = e.element("title").getStringValue();
+						//获取用例前提及描述
+						Element notes=e.element("notes");//获取用例备注
+						
+						// 优先级标记表示测试用例
+						if (markerIcon.startsWith("priority")) {
+							// 取得优先级数字
+							String suffix = markerIcon.replaceAll("priority-", "");
+							System.out.println("suf=-----------------" + suffix);
+
+							testcaseName = topicName;
+							
+							if(notes!=null) {
+								
+								String prediction=notes.element("plain").getStringValue();
+								//前提
+								Cell testcasePreconditionsCell = testcaseRow.createCell(4);
+
+								testcasePreconditionsCell.setCellValue(prediction);
+							}
+							
+
+							switch (suffix) {
+
+							case "1":
+								importance = "高";
+								break;
+
+							case "2":
+								importance = "中";
+								break;
+
+							case "3":
+								importance = "低";
+								break;
+
+							}
+							System.out.println("当前节点为测试用例,用例名称为:" + testcaseName + "优先级为:" + importance);
+
+							// 测试组件
+
+							node = node.getParent().getParent();// 获取当前节点的父节点,topic节点的上级父节点
+
+							List<String> testSuitePathList = new ArrayList<String>();
+							// 当前节点的名称
+							// String currentSuiteName = node.attributeValue("name");
+
+							String currentestsuiteName = null;// 测试用例名称
+
+							Element currentMarker = node.element("marker-refs");
+							String testsuiteMarkerIcon = null;
+							if (currentMarker != null) {
+								Element testsuiteMarkerRef = currentMarker.element("marker-ref");
+								testsuiteMarkerIcon = testsuiteMarkerRef.attributeValue("marker-id");
+								System.out.println("测试组件==================主题引用的图标为:" + markerIcon);
+								String testsuiteTopicName = node.element("title").getStringValue();
+
+								// 旗帜标记表示测试组件
+
+								if (testsuiteMarkerIcon != null && testsuiteMarkerIcon.startsWith("flag")) {
+									currentestsuiteName = testsuiteTopicName;
+									System.out.println("当前节点为测试组件，名称为:" + testsuiteTopicName);
+									testsuiteTopic.add(currentestsuiteName);
+
+									System.out.println(
+											"进入while循环前节点的名称为:" + node.getName() + "topic值为:" + testsuiteTopicName);
+									// topic节点的type属性
+
+									String nodeParentTypeValue = node.getParent().attributeValue("type");
+									// 第一个topic节点具有的属性
+									String rootTp = node.attributeValue("structure-class");
+									if (nodeParentTypeValue != null) {
+
+										while (nodeParentTypeValue.equals("attached")) {
+
+											if (!node.isRootElement() && rootTp == null) {
+
+												node = node.getParent().getParent().getParent();// 获取当前节点的父节点,topic节点的上级父节点
+											}
+											// 节点不为空并且包含图标
+											if (node != null && node.element("marker-refs") != null) {
+												System.out.println("-----节点的名称为--------" + node.getName());
+												currentParentSuiteName = node.element("title").getStringValue();
+												System.out.println("----------------父组件的名称为:" + currentParentSuiteName);
+											} else {
+												break;
+											}
+
+											testSuitePathList.add(currentParentSuiteName);
+
+										}
+									}
+
+									for (String testsuite : testSuitePathList) {
+
+										System.out.println("***********遍历测试组件路径********************" + testsuite);
+									}
+
+								}
+
+								StringBuffer stringBuffer = new StringBuffer();
+								Collections.reverse(testSuitePathList);
+								// 获得用例路径
+								for (String suiteName : testSuitePathList) {
+									stringBuffer.append(suiteName + "/");
+								}
+								String testcaseFullPath = stringBuffer + currentestsuiteName;
+								System.out.println("-----------------设置用例路径-----------------------");
+								Cell testcasePathCell = testcaseRow.createCell(0);// 用例路径
+
+								testcasePathCell.setCellValue(testcaseFullPath);
+								System.out.println("-----------------设置用例名称-----------------------");
+								Cell testcaseNameCell = testcaseRow.createCell(1);// 用例名称
+
+								testcaseNameCell.setCellValue(testcaseName);
+								System.out.println("-----------------设置用例优先级-----------------------");
+
+								Cell testcaseimportanceCell = testcaseRow.createCell(3);//优先级
+
+								testcaseimportanceCell.setCellValue(importance);
+								System.out.println("用例完整路径为:" + testcaseFullPath);
+								System.out.println("用例路径为: " + testcaseFullPath + " 用例名称为:" + testcaseName + " 用例优先级为:"
+										+ importance);
+								Element children = e.element("children");// 获取用例步骤
+								Element stepTp = children.element("topics");
+								System.out.println("stepTp的名称为:" + stepTp.getName());
+								List<Element> steps = stepTp.elements("topic");
+								for (Element stepEl : steps) {
+									testcaseRow = caseSheet.createRow(testcaseRowNum);// 创建行
+									testcaseRowNum++;
+									System.out.println("=================当前行号为:================"+testcaseRow.getRowNum());
+									System.out.println("-------------用例的行数为:--------------"+testcaseRowNum);
+									String action = stepEl.element("title").getStringValue();// 用例步骤
+									System.out.println("---------------设置用例步骤-----------------------");
+									System.out.println("用例步骤为:" + action);
+									//步骤
+									Cell testcaseActionsCell = testcaseRow.createCell(5);
+
+									testcaseActionsCell.setCellValue(action);// 写入测试步骤
+
+									Element exceptChild = stepEl.element("children");
+									Element exceptTp = exceptChild.element("topics");
+
+									List<Element> excepts = exceptTp.elements("topic");
+									String except = null;
+									List<String> exceptList = new ArrayList<>();
+									for (Element exceptEl : excepts) {
+										except = exceptEl.element("title").getStringValue();// 用例期望
+										exceptList.add(except);
+
+									}
+									int exceptSize = exceptList.size();
+									//期望
+									Cell testcaseExpectedresultsCell = testcaseRow.createCell(6);
+									// 单步骤
+
+									if (exceptSize == 1) {
+										System.out.println("---------------设置用例期望-----------------------");
+
+										testcaseExpectedresultsCell.setCellValue(except);
+									}
+									// 多步骤
+									if (exceptSize > 1) {
+										StringBuffer str = new StringBuffer();
+										for (String mExcept : exceptList) {
+											str.append(mExcept + "\n");
+										}
+										System.out.println("---------------设置用例期望-----------------------");
+
+										testcaseExpectedresultsCell.setCellValue(str.toString());
+
+									}
+
+								}
+
+							//	testcaseRow = caseSheet.createRow(testcaseRowNum);// 创建行
+
+
+								node = e.getParent();// 将node的值还原
+
+							}
+
+						}
+
+					}
+
+				}
+			}
+
+		}
+	}
+
+	/**
+	 * 
+	 * @param node 递归的节点
+	 * @throws FileNotFoundException
+	 */
 	public static void getNodes(Element node) throws FileNotFoundException {
 
 		System.out.println("--------------------");
@@ -163,211 +368,9 @@ public class Xmind2Excel {
 		System.out.println("当前节点名称：" + nodeName);// 当前节点名称
 		System.out.println("当前节点的内容：" + nodeContent);// 当前节点内容
 		// testcaseRow=caseSheet.createRow(testcaseRowNum);
-          testsuiteJuge(node);
-            
-           
-//		if (nodeName.equals("topic")) {
-//			Element title = node.element("title");// 获取主题名称
-//			System.out.println("==================主题名称为:" + title.getStringValue());
-//			Element marker = node.element("marker-refs");// 获取主题图标
-//			if (marker != null) {
-//
-//				Element markerRef = marker.element("marker-ref");
-//				String markerIcon = markerRef.attributeValue("marker-id");
-//				System.out.println("==================主题引用的图标为:" + markerRef.attributeValue("marker-id"));
-//				// 如果是旗帜图标则说明该主题是测试组件
-//				if (markerIcon.startsWith("flag")) {
-//					List<Element> childTopc = node.elements("children");
-//					// 如果节点有分支
-//					if (childTopc != null) {
-//
-//						for (Element e : childTopc) {
-//							// System.out.println("=======================子节点名称为:"+e.getStringValue());
-//							String childNodeName = e.getName();
-//							if (childNodeName.equals("topic")) {
-//
-//							}
-//
-//							Element childTitle = (Element) e.selectSingleNode("//title");// 查找子节点的主题名称
-//							if (childTitle != null) {
-//
-//								System.out.println("==================子节点的title为:" + childTitle.getStringValue());
-//							}
-//
-//							Element childMarker = (Element) e.selectSingleNode("//marker-ref");
-//							if (childMarker != null) {
-//
-//								System.out.println(
-//										"=======================子节点的图标为:" + childMarker.attributeValue("marker-id"));
-//							}
-//						}
-//					}
-//				}
-//
-//			}
-//		}
+		if (node != null) {
 
-		if (nodeName.equals("testsuite") && node.element("testcase") != null && !node.isRootElement()) {
-			// 非根节点且包含测试用例
-			// 创建测试用例路径单元格
-
-			// 测试用例路径
-			System.out.println("非多步骤创建第" + testcaseRowNum + "行");
-
-			// cell.setCellStyle(style);
-
-			testcaseRow = caseSheet.createRow(testcaseRowNum);
-			Cell testcasePathCell = testcaseRow.createCell(0);
-			// testcasePathCell.setCellStyle(style);
-			System.out.println("===================节点名称为:" + node.attributeValue("name") + "节点路径为:" + node.getPath());
-			String nodePath = node.getPath();
-
-			System.out.println("父节点的名称为:" + node.getParent().attributeValue("name"));
-
-			if (node.getParent().attributeValue("name") == "") {
-				System.out.println(node.attributeValue("name") + "不存在多层路径");
-			} else {
-
-				List<String> testSuitePathList = new ArrayList<String>();
-				// 当前节点的名称
-				String currentSuiteName = node.attributeValue("name");
-				System.out
-						.println("--------------------------------当前节点的名称为:-----------------------" + currentSuiteName);
-				parentNode = node.getParent();
-				String currentParentSuiteName = parentNode.attributeValue("name");
-				System.out.println(
-						"-------------------------------当前节点的父节点名称为:----------------------" + currentParentSuiteName);
-
-				while (parentNode.attributeValue("name") != "") {
-					// 替换父节点
-					parentNode = parentNode.getParent();
-					// 获得父节点的属性值
-					String testSuiteName = parentNode.attributeValue("name");
-					// 如果非父节点
-					if (testSuiteName != "") {
-						testSuitePathList.add(testSuiteName);
-						System.out.println("-------------------------------------------------------" + testSuiteName);
-					}
-
-				}
-				StringBuffer stringBuffer = new StringBuffer();
-				Collections.reverse(testSuitePathList);
-				// 获得用例路径
-				for (String suiteName : testSuitePathList) {
-					stringBuffer.append(suiteName + "/");
-				}
-				String testcaseFullPath = stringBuffer + currentParentSuiteName + "/" + currentSuiteName;
-				System.out.println("用例完整路径为:" + testcaseFullPath);
-				if (testcaseFullPath != null && testcasePathCell != null) {
-
-					testcasePathCell.setCellValue(testcaseFullPath);// 写入用例路径到Excel
-				}
-
-			}
-		}
-
-		// 获取用例的名称
-		if (nodeName.equals("testcase") && node.getParent().getName().equals("testsuite") && !node.isRootElement()) {
-			System.out.println("用例名称为:" + node.attributeValue("name"));
-			String testcaseName = node.attributeValue("name");
-			Cell testcaseNameCell = testcaseRow.createCell(1);
-			// testcaseNameCell.setCellStyle(style);// 设置边框
-			if (testcaseNameCell != null) {
-
-				testcaseNameCell.setCellValue(testcaseName);
-			}
-			// 获取用例的描述
-			if (node.element("summary") != null) {
-				String summary = node.element("summary").getStringValue().replaceAll("<p>", "").replaceAll("<p/>", "");
-				System.out.println("用例摘要为:" + summary);
-				Cell testcaseSummaryCell = testcaseRow.createCell(2);
-				// testcaseSummaryCell.setCellStyle(style);
-				if (testcaseSummaryCell != null) {
-
-					testcaseSummaryCell.setCellValue(summary);
-				}
-			}
-			// 获取用例的优先级
-			if (node.element("importance") != null) {
-
-				String importance = node.element("importance").getStringValue();
-				System.out.println("用例优先级为:" + importance);
-				// System.out.println("用例摘要为:" + importance);
-				Cell testcaseimportanceCell = testcaseRow.createCell(3);
-				// testcaseimportanceCell.setCellStyle(style);
-				if (testcaseimportanceCell != null) {
-
-					testcaseimportanceCell.setCellValue(importance);
-				}
-			}
-
-			// 获取用例的前提
-
-			if (node.element("preconditions") != null) {
-
-				String preconditions = node.element("preconditions").getStringValue().replaceAll("<p>", "")
-						.replaceAll("<p/>", "");
-				System.out.println("用例的前提为:" + preconditions);
-
-				Cell testcasePreconditionsCell = testcaseRow.createCell(4);
-				// testcasePreconditionsCell.setCellStyle(style);
-				if (testcasePreconditionsCell != null && preconditions != null) {
-
-					testcasePreconditionsCell.setCellValue(preconditions);
-				}
-
-			}
-
-		}
-
-		// 获取用例操作步骤e
-		if (nodeName.equals("steps")) {
-			// testcaseRow = caseSheet.createRow(testcaseRowNum);
-			if (node.elements("step") != null) {
-				List<Element> stepList = node.elements("step");
-				System.out.println("==============步骤长度为:" + stepList.size());
-
-				int stepLen = stepList.size();
-
-				for (Element stElement : stepList) {
-
-					Cell testcaseActionsCell = testcaseRow.createCell(5);
-					// testcaseActionsCell.setCellStyle(style);
-					Cell testcaseExpectedresultsCell = testcaseRow.createCell(6);
-					// testcaseExpectedresultsCell.setCellStyle(style);
-					if (stElement.element("actions") != null) {
-
-						Node element = stElement.element("actions");
-						String actions = element.getStringValue().replaceAll("<p>", "").replaceAll("<p/>", "");
-						if (testcaseActionsCell != null && actions != null) {
-
-							testcaseActionsCell.setCellValue(actions);
-						}
-
-					}
-
-					// 获取期望结果
-					if (stElement.element("expectedresults") != null) {
-
-						Node element = stElement.element("expectedresults");
-						String expectedresults = element.getStringValue().replaceAll("<p>", "").replaceAll("<p/>", "");
-
-						if (testcaseExpectedresultsCell != null && expectedresults != null) {
-
-							testcaseExpectedresultsCell.setCellValue(expectedresults);
-						}
-
-					}
-
-					testcaseRowNum++;
-					if (stepLen > 2) {
-						System.out.println("用例步骤大于2条,当前行号为:" + testcaseRowNum);
-						System.out.println("多步骤创建第" + testcaseRowNum + "行");
-						testcaseRow = caseSheet.createRow(testcaseRowNum);
-					}
-				}
-			}
-
+			testsuiteJuge(node);
 		}
 
 		// 递归遍历当前节点所有的子节点
